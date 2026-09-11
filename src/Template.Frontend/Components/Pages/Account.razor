@@ -1,0 +1,44 @@
+@page "/account"
+
+<PageTitle>Account | LINE Mini App</PageTitle>
+
+<section class="panel">
+    <h1 class="panel-title">Account</h1>
+
+    @if (!Ready)
+    {
+        <p class="page-note">Connecting to LINE...</p>
+    }
+    else if (Error is not null)
+    {
+        <p class="page-error">@Error</p>
+    }
+    else if (Done)
+    {
+        <p class="panel-sub">Your account and data have been deleted. You can close this window.</p>
+    }
+    else
+    {
+        <p class="panel-sub">
+            Deleting your account removes your stored data and your LINE-to-account mapping. This
+            cannot be undone.
+        </p>
+
+        @if (!Confirming)
+        {
+            <button type="button" class="button button-danger" @onclick="() => Confirming = true">
+                Delete my account
+            </button>
+        }
+        else
+        {
+            <p class="panel-note">Are you sure? This permanently deletes your data.</p>
+            <div class="data-actions">
+                <button type="button" class="button" @onclick="() => Confirming = false" disabled="@Deleting">Cancel</button>
+                <button type="button" class="button button-danger" @onclick="DeleteAsync" disabled="@Deleting">
+                    @(Deleting ? "Deleting..." : "Yes, delete")
+                </button>
+            </div>
+        }
+    }
+</section>

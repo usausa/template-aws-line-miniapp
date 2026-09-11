@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>LINE Mini App</title>
+    <base href="/" />
+
+    <!-- Warm the TLS connection to the LINE platform while the runtime is still downloading. The
+         LIFF SDK calls api.line.me right after init, so paying DNS + TCP + TLS here removes it from
+         the critical path. -->
+    <link rel="preconnect" href="https://api.line.me" crossorigin />
+
+    <link rel="stylesheet" href="css/app.css" />
+</head>
+
+<body>
+    <!-- Shown until the runtime is downloaded. Without this the page stays blank for a few
+         seconds, so the splash cannot be omitted. -->
+    <div id="app">
+        <div class="boot">
+            <div class="boot-title">LINE MINI APP</div>
+            <div class="boot-bar"><span></span></div>
+            <div class="boot-note">Loading application</div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" data-nosnippet>
+        An unexpected error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+
+    <!-- LIFF SDK (edge = latest 2.x). Its host is allowed by the CloudFront CSP script-src. -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="js/liff-interop.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

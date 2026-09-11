@@ -1,0 +1,17 @@
+{
+  "app": "dotnet run",
+  "context": {
+    "dev": {
+      "lineChannelId": "2000000001",
+      "liffId": "2000000001-devdeploy",
+      "liffIdLocal": "2000000001-devlocal",
+      "allowLocalhost": true,
+      "testJwks": true
+    },
+    "prod": {
+      "lineChannelId": "REPLACE_WITH_LINE_CHANNEL_ID",
+      "liffId": "REPLACE_WITH_DEPLOY_LIFF_ID",
+      "allowLocalhost": false
+    }
+  }
+}

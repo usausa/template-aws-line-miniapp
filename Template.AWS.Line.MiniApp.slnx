@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="Analyzers.ruleset" />
+    <File Path="CLAUDE.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="SPEC.md" />
+    <File Path="Template.AWS.Line.MiniApp.sln.DotSettings" />
+  </Folder>
+  <Project Path="src/Template.Backend/Template.Backend.csproj" />
+  <Project Path="src/Template.Frontend/Template.Frontend.csproj" DefaultStartup="true" />
+  <Project Path="src/Template.IaC/Template.IaC.csproj" />
+</Solution>

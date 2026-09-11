@@ -1,0 +1,46 @@
+@page "/data"
+
+<PageTitle>Data | LINE Mini App</PageTitle>
+
+<section class="panel">
+    <h1 class="panel-title">Your data</h1>
+
+    @if (Loading)
+    {
+        <p class="page-note">Loading...</p>
+    }
+    else if (Error is not null)
+    {
+        <p class="page-error">@Error</p>
+    }
+    else
+    {
+        <p class="panel-sub">
+            A single JSON document stored for your account. Version @Version
+            @if (!string.IsNullOrEmpty(UpdatedAt))
+            {
+                <text>&middot; updated @LocalTime(UpdatedAt)</text>
+            }
+        </p>
+
+        <textarea class="data-editor" spellcheck="false"
+                  @bind="DataText" @bind:event="oninput"></textarea>
+
+        <div class="data-bar">
+            <span class="data-size @(Oversize ? "data-size-over" : null)">
+                @Utf8Bytes(DataText) / @MaxBytes bytes
+            </span>
+            <div class="data-actions">
+                <button type="button" class="button" @onclick="ReloadAsync" disabled="@Saving">Reload</button>
+                <button type="button" class="button button-primary" @onclick="SaveAsync" disabled="@(Saving || Oversize)">
+                    @(Saving ? "Saving..." : "Save")
+                </button>
+            </div>
+        </div>
+
+        @if (Status is not null)
+        {
+            <p class="panel-note">@Status</p>
+        }
+    }
+</section>

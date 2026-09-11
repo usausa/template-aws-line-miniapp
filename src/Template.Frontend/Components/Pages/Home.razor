@@ -1,0 +1,51 @@
+@page "/"
+
+<PageTitle>Home | LINE Mini App</PageTitle>
+
+<section class="panel">
+    <h1 class="panel-title">Home</h1>
+
+    @if (Loading)
+    {
+        <p class="page-note">Connecting to LINE...</p>
+    }
+    else if (Error is not null)
+    {
+        <p class="page-error">@Error</p>
+    }
+    else
+    {
+        <div class="profile">
+            @if (!string.IsNullOrEmpty(Profile?.PictureUrl))
+            {
+                <img class="profile-avatar" src="@Profile!.PictureUrl" alt="" />
+            }
+            <div>
+                <div class="profile-name">@Profile?.DisplayName</div>
+                <div class="profile-status">@Profile?.StatusMessage</div>
+            </div>
+        </div>
+
+        <p class="panel-sub">
+            Session token: @(TokenReady ? "acquired (app JWT held in memory)" : "not acquired")
+        </p>
+
+        <dl class="claims">
+            <dt>OS</dt>
+            <dd>@Environment?.Os</dd>
+            <dt>Language</dt>
+            <dd>@Environment?.Language</dd>
+            <dt>LIFF</dt>
+            <dd>@Environment?.LiffVersion</dd>
+            <dt>LINE</dt>
+            <dd>@(Environment?.LineVersion ?? "-")</dd>
+            <dt>In client</dt>
+            <dd>@Environment?.IsInClient</dd>
+        </dl>
+
+        <p class="panel-sub">
+            Your data is stored per user and readable only by you.
+            <a href="data">Go to data</a>
+        </p>
+    }
+</section>
