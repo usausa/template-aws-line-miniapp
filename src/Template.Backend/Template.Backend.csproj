@@ -27,6 +27,7 @@
     <PackageReference Include="AWSSDK.SecretsManager" Version="4.0.100.11" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.22.0" />
+    <PackageReference Include="Usa.Smart.Mapper" Version="1.0.0-beta9" />
   </ItemGroup>
 
 </Project>
