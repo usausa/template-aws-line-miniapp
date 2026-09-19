@@ -52,14 +52,23 @@ public sealed class UserRepository
                     ["createdAt"] = new AttributeValue(NowIso()),
                 },
                 ConditionExpression = "attribute_not_exists(PK)",
+                ReturnValuesOnConditionCheckFailure = ReturnValuesOnConditionCheckFailure.ALL_OLD,
             });
 
             return internalUserId;
         }
-        catch (ConditionalCheckFailedException)
+        catch (ConditionalCheckFailedException ex)
         {
-            // A concurrent login created the row first. Re-read and use the winner's id.
-            return await GetInternalUserIdAsync(key) ?? internalUserId;
+            // A concurrent login created the row first. The failure carries the winner's item, so
+            // its id is used without a re-read. The id generated here was never stored, so it must
+            // not be returned as a fallback: fail instead if the stored id cannot be obtained.
+            if ((ex.Item is not null) && ex.Item.TryGetValue("internalUserId", out var winner))
+            {
+                return winner.S;
+            }
+
+            return await GetInternalUserIdAsync(key)
+                ?? throw new InvalidOperationException("The internal user id could not be resolved after a concurrent first login.");
         }
     }
 
