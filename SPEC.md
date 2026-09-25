@@ -98,12 +98,12 @@ S3 は**静的ファイル配信のみ**(v2 どおり)。ユーザーデータ�
 
 ## 3. プロジェクト構成
 
-ディレクトリ名は `template-aws-line-miniapp`、プロジェクト接頭辞は他テンプレートと同じ `Template.`、CloudFormation スタック名は `template-aws-line-miniapp-{env}`。規約ファイル(`.editorconfig` / `Analyzers.ruleset` / `Directory.Build.props` / `Directory.Build.targets` / `AGENTS.md` / `CLAUDE.md`)は template-aws-s3-wasm からそのまま複製する。
+ディレクトリ名は `template-aws-line-miniapp`、プロジェクト接頭辞は他テンプレートと同じ `Template.`、CloudFormation スタック名は `template-aws-line-miniapp-{env}`。規約ファイル(`.editorconfig` / `Analyzers.ruleset` / `Directory.Build.props` / `Directory.Build.targets` / `AGENTS.md`)は template-aws-s3-wasm からそのまま複製する。
 
 ```
 template-aws-line-miniapp/
 ├── .editorconfig / Analyzers.ruleset / Directory.Build.props / Directory.Build.targets
-├── AGENTS.md / CLAUDE.md
+├── AGENTS.md
 ├── Template.AWS.Line.MiniApp.slnx
 ├── SPEC.md                                  ← 本書
 │

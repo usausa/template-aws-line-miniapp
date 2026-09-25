@@ -281,7 +281,7 @@ template-aws-line-miniapp/
 │   ├── DataConstruct.cs / SecretConstruct.cs
 │   └── EnvironmentConfig.cs / cdk.json / Program.cs
 ├── scripts/                                 ← 下記
-└── README.md / AGENTS.md / CLAUDE.md / Analyzers.ruleset / Directory.Build.*
+└── README.md / AGENTS.md / Analyzers.ruleset / Directory.Build.*
 ```
 
 ### scripts 一覧
