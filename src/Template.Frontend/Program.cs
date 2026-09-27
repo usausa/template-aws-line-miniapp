@@ -1,9 +1,4 @@
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-
-using Template.Frontend.Components;
-using Template.Frontend.Services;
-using Template.Frontend.Settings;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -18,9 +13,9 @@ builder.Services.AddSingleton(setting);
 // One HttpClient pointed at the API base. In production this is the app's own origin (CloudFront
 // /api), so calls are same-origin; in local dev it is the dev distribution, reached cross-origin
 // with the dev-only CORS allowance.
-builder.Services.AddScoped(sp => new HttpClient
+builder.Services.AddScoped(_ => new HttpClient
 {
-    BaseAddress = new Uri(setting.ApiEndpoint.TrimEnd('/') + "/"),
+    BaseAddress = new Uri(setting.ApiEndpoint.TrimEnd('/') + "/")
 });
 
 builder.Services.AddScoped<LiffService>();

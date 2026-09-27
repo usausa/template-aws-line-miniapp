@@ -17,7 +17,7 @@ public sealed class SecretConstruct : Construct
         {
             Description = $"ES256 JWT signing key (PEM) for the LINE mini app ({config.EnvName}). Set by scripts/init-jwt-key.ps1.",
             SecretStringValue = SecretValue.UnsafePlainText("PLACEHOLDER-run-init-jwt-key.ps1"),
-            RemovalPolicy = config.Ephemeral ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+            RemovalPolicy = config.Ephemeral ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN
         });
     }
 

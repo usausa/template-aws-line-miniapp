@@ -21,7 +21,7 @@ public sealed class HostingConstruct : Construct
             Encryption = BucketEncryption.S3_MANAGED,
             EnforceSSL = true,
             RemovalPolicy = config.Ephemeral ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
-            AutoDeleteObjects = config.Ephemeral,
+            AutoDeleteObjects = config.Ephemeral
         });
 
         var headersPolicy = new ResponseHeadersPolicy(this, "Headers", new ResponseHeadersPolicyProps
@@ -32,25 +32,25 @@ public sealed class HostingConstruct : Construct
                 FrameOptions = new ResponseHeadersFrameOptions
                 {
                     FrameOption = HeadersFrameOption.DENY,
-                    Override = true,
+                    Override = true
                 },
                 ReferrerPolicy = new ResponseHeadersReferrerPolicy
                 {
                     ReferrerPolicy = HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-                    Override = true,
+                    Override = true
                 },
                 StrictTransportSecurity = new ResponseHeadersStrictTransportSecurity
                 {
                     AccessControlMaxAge = Duration.Days(365),
                     IncludeSubdomains = true,
-                    Override = true,
+                    Override = true
                 },
                 ContentSecurityPolicy = new ResponseHeadersContentSecurityPolicy
                 {
                     ContentSecurityPolicy = Csp,
-                    Override = true,
-                },
-            },
+                    Override = true
+                }
+            }
         });
 
         Distribution = new Distribution(this, "Distribution", new DistributionProps
@@ -61,7 +61,7 @@ public sealed class HostingConstruct : Construct
                 ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                 Compress = true,
                 CachePolicy = CachePolicy.CACHING_OPTIMIZED,
-                ResponseHeadersPolicy = headersPolicy,
+                ResponseHeadersPolicy = headersPolicy
             },
             DefaultRootObject = "index.html",
             HttpVersion = HttpVersion.HTTP2_AND_3,
@@ -78,17 +78,17 @@ public sealed class HostingConstruct : Construct
                     HttpStatus = 403,
                     ResponseHttpStatus = 200,
                     ResponsePagePath = "/index.html",
-                    Ttl = Duration.Seconds(10),
+                    Ttl = Duration.Seconds(10)
                 },
                 new ErrorResponse
                 {
                     HttpStatus = 404,
                     ResponseHttpStatus = 200,
                     ResponsePagePath = "/index.html",
-                    Ttl = Duration.Seconds(10),
-                },
+                    Ttl = Duration.Seconds(10)
+                }
             ],
-            Comment = $"LINE mini app ({config.EnvName})",
+            Comment = $"LINE mini app ({config.EnvName})"
         });
 
         // Serve the API from the app's own origin: same-origin removes the CORS preflight from every
@@ -103,15 +103,15 @@ public sealed class HostingConstruct : Construct
             {
                 CustomHeaders = new Dictionary<string, string>(StringComparer.Ordinal)
                 {
-                    ["x-origin-verify"] = config.OriginVerify,
-                },
+                    ["x-origin-verify"] = config.OriginVerify
+                }
             }),
             new AddBehaviorOptions
             {
                 ViewerProtocolPolicy = ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                 AllowedMethods = AllowedMethods.ALLOW_ALL,
                 CachePolicy = CachePolicy.CACHING_DISABLED,
-                OriginRequestPolicy = OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                OriginRequestPolicy = OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER
             });
     }
 

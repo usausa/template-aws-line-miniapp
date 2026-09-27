@@ -30,8 +30,8 @@ public sealed class DataConstruct : Construct
             BillingMode = BillingMode.PAY_PER_REQUEST,
             PointInTimeRecoverySpecification = new PointInTimeRecoverySpecification
             {
-                PointInTimeRecoveryEnabled = !config.Ephemeral,
+                PointInTimeRecoveryEnabled = !config.Ephemeral
             },
-            RemovalPolicy = config.Ephemeral ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+            RemovalPolicy = config.Ephemeral ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN
         });
 }

@@ -14,9 +14,9 @@ public static class Program
             Env = new Amazon.CDK.Environment
             {
                 Account = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT"),
-                Region = EnvironmentConfig.Region,
+                Region = EnvironmentConfig.Region
             },
-            Description = "LINE mini app template (CloudFront + S3 WASM hosting, HTTP API + Lambda, DynamoDB per-user JSON, LINE auth with a self-issued JWT)",
+            Description = "LINE mini app template (CloudFront + S3 WASM hosting, HTTP API + Lambda, DynamoDB per-user JSON, LINE auth with a self-issued JWT)"
         });
 
         app.Synth();

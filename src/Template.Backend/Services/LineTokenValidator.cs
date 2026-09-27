@@ -59,7 +59,7 @@ public sealed class LineTokenValidator : IDisposable
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
+            ClockSkew = TimeSpan.FromMinutes(1)
         });
 
         if (!result.IsValid)

@@ -41,9 +41,9 @@ public sealed class JwtIssuer
             Claims = new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["sub"] = internalUserId,
-                ["line_sub"] = lineUserId,
+                ["line_sub"] = lineUserId
             },
-            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.EcdsaSha256),
+            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.EcdsaSha256)
         };
 
         var token = handler.CreateToken(descriptor);

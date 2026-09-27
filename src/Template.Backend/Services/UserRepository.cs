@@ -47,12 +47,12 @@ public sealed class UserRepository
                 TableName = options.AuthTable,
                 Item = new Dictionary<string, AttributeValue>(StringComparer.Ordinal)
                 {
-                    [Pk] = new AttributeValue(key),
-                    ["internalUserId"] = new AttributeValue(internalUserId),
-                    ["createdAt"] = new AttributeValue(NowIso()),
+                    [Pk] = new(key),
+                    ["internalUserId"] = new(internalUserId),
+                    ["createdAt"] = new(NowIso())
                 },
                 ConditionExpression = "attribute_not_exists(PK)",
-                ReturnValuesOnConditionCheckFailure = ReturnValuesOnConditionCheckFailure.ALL_OLD,
+                ReturnValuesOnConditionCheckFailure = ReturnValuesOnConditionCheckFailure.ALL_OLD
             });
 
             return internalUserId;
@@ -79,9 +79,9 @@ public sealed class UserRepository
             TableName = options.DataTable,
             Key = new Dictionary<string, AttributeValue>(StringComparer.Ordinal)
             {
-                [Pk] = new AttributeValue(DataKey(internalUserId)),
+                [Pk] = new(DataKey(internalUserId))
             },
-            ConsistentRead = true,
+            ConsistentRead = true
         });
 
         if (!response.IsItemSet)
@@ -109,17 +109,17 @@ public sealed class UserRepository
                 TableName = options.DataTable,
                 Item = new Dictionary<string, AttributeValue>(StringComparer.Ordinal)
                 {
-                    [Pk] = new AttributeValue(DataKey(internalUserId)),
-                    ["data"] = new AttributeValue(data),
-                    ["version"] = new AttributeValue { N = (expectedVersion + 1).ToString(CultureInfo.InvariantCulture) },
-                    ["updatedAt"] = new AttributeValue(NowIso()),
+                    [Pk] = new(DataKey(internalUserId)),
+                    ["data"] = new(data),
+                    ["version"] = new() { N = (expectedVersion + 1).ToString(CultureInfo.InvariantCulture) },
+                    ["updatedAt"] = new(NowIso())
                 },
                 ConditionExpression = "attribute_not_exists(PK) OR #v = :expected",
                 ExpressionAttributeNames = new Dictionary<string, string>(StringComparer.Ordinal) { ["#v"] = "version" },
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>(StringComparer.Ordinal)
                 {
-                    [":expected"] = new AttributeValue { N = expectedVersion.ToString(CultureInfo.InvariantCulture) },
-                },
+                    [":expected"] = new() { N = expectedVersion.ToString(CultureInfo.InvariantCulture) }
+                }
             });
 
             return new PutOutcome(true, expectedVersion + 1);
@@ -145,9 +145,9 @@ public sealed class UserRepository
                         TableName = options.AuthTable,
                         Key = new Dictionary<string, AttributeValue>(StringComparer.Ordinal)
                         {
-                            [Pk] = new AttributeValue(AuthKey(lineUserId)),
-                        },
-                    },
+                            [Pk] = new(AuthKey(lineUserId))
+                        }
+                    }
                 },
                 new TransactWriteItem
                 {
@@ -156,11 +156,11 @@ public sealed class UserRepository
                         TableName = options.DataTable,
                         Key = new Dictionary<string, AttributeValue>(StringComparer.Ordinal)
                         {
-                            [Pk] = new AttributeValue(DataKey(internalUserId)),
-                        },
-                    },
-                },
-            ],
+                            [Pk] = new(DataKey(internalUserId))
+                        }
+                    }
+                }
+            ]
         });
     }
 
@@ -171,9 +171,9 @@ public sealed class UserRepository
             TableName = options.AuthTable,
             Key = new Dictionary<string, AttributeValue>(StringComparer.Ordinal)
             {
-                [Pk] = new AttributeValue(authKey),
+                [Pk] = new(authKey)
             },
-            ConsistentRead = true,
+            ConsistentRead = true
         });
 
         return response.IsItemSet ? response.Item["internalUserId"].S : null;

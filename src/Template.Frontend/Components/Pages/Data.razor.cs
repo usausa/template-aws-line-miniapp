@@ -57,10 +57,10 @@ public sealed partial class Data
         }
     }
 
-    private async Task ReloadAsync()
+    private Task ReloadAsync()
     {
         Status = null;
-        await LoadAsync();
+        return LoadAsync();
     }
 
     private async Task LoadAsync()

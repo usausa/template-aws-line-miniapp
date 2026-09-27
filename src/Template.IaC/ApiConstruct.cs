@@ -42,14 +42,14 @@ public sealed class ApiConstruct : Construct
             {
                 AllowOrigins = [EnvironmentConfig.LocalhostOrigin],
                 AllowMethods = [CorsHttpMethod.GET, CorsHttpMethod.PUT, CorsHttpMethod.POST, CorsHttpMethod.DELETE],
-                AllowHeaders = ["authorization", "content-type"],
+                AllowHeaders = ["authorization", "content-type"]
             }
             : null;
 
         Api = new HttpApi(this, "Api", new HttpApiProps
         {
             Description = $"LINE mini app API ({config.EnvName})",
-            CorsPreflight = cors,
+            CorsPreflight = cors
         });
 
         // Modest throttling in place of a WAF rate rule (SPEC 1 #3 / 9.4): caps request-driven cost
@@ -59,7 +59,7 @@ public sealed class ApiConstruct : Construct
             stage.DefaultRouteSettings = new CfnStage.RouteSettingsProperty
             {
                 ThrottlingBurstLimit = 100,
-                ThrottlingRateLimit = 50,
+                ThrottlingRateLimit = 50
             };
         }
     }
@@ -82,7 +82,7 @@ public sealed class ApiConstruct : Construct
             ["JWT_ISSUER"] = "template-aws-line-miniapp",
             ["JWT_AUDIENCE"] = "miniapp",
             ["JWT_LIFETIME_DAYS"] = "7",
-            ["ORIGIN_VERIFY"] = config.OriginVerify,
+            ["ORIGIN_VERIFY"] = config.OriginVerify
         };
 
         if (!string.IsNullOrEmpty(jwksUrl))
@@ -124,9 +124,9 @@ public sealed class ApiConstruct : Construct
             LogGroup = new LogGroup(this, $"{name}Logs", new LogGroupProps
             {
                 Retention = config.Ephemeral ? RetentionDays.ONE_WEEK : RetentionDays.ONE_MONTH,
-                RemovalPolicy = config.Ephemeral ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+                RemovalPolicy = config.Ephemeral ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN
             }),
-            Description = $"{name} ({config.EnvName})",
+            Description = $"{name} ({config.EnvName})"
         });
 
         // Structurally forbid table-wide reads. This API completes every request with point
@@ -136,14 +136,14 @@ public sealed class ApiConstruct : Construct
         {
             Effect = Effect.DENY,
             Actions = ["dynamodb:Scan", "dynamodb:Query"],
-            Resources = ["*"],
+            Resources = ["*"]
         }));
 
         Api.AddRoutes(new AddRoutesOptions
         {
             Path = $"{PathPrefix}{path}",
             Methods = [method],
-            Integration = new HttpLambdaIntegration($"{name}Integration", function),
+            Integration = new HttpLambdaIntegration($"{name}Integration", function)
         });
 
         return function;

@@ -66,7 +66,7 @@ public sealed class ApiClient
     {
         using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Put, "data")
         {
-            Content = JsonContent.Create(new PutRequest(data, version), ApiSerializerContext.Default.PutRequest),
+            Content = JsonContent.Create(new PutRequest(data, version), ApiSerializerContext.Default.PutRequest)
         });
 
         if (response is null)
@@ -82,8 +82,6 @@ public sealed class ApiClient
                 return new PutDataResult(ApiOutcome.TooLarge, 0);
             case HttpStatusCode.Unauthorized:
                 return new PutDataResult(ApiOutcome.Unauthorized, 0);
-            default:
-                break;
         }
 
         if (!response.IsSuccessStatusCode)
@@ -162,11 +160,11 @@ public sealed class ApiClient
         return await SendOnceAsync(factory);
     }
 
-    private async Task<HttpResponseMessage> SendOnceAsync(Func<HttpRequestMessage> factory)
+    private Task<HttpResponseMessage> SendOnceAsync(Func<HttpRequestMessage> factory)
     {
         var request = factory();
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", store.Token);
-        return await http.SendAsync(request);
+        return http.SendAsync(request);
     }
 }
 
@@ -178,7 +176,7 @@ public enum ApiOutcome
     Unauthorized,
     Conflict,
     TooLarge,
-    Error,
+    Error
 }
 
 public sealed record GetDataResult(ApiOutcome Outcome, DataResponse? Data);
