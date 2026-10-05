@@ -35,34 +35,34 @@ public sealed class ApiClient
         return await ExchangeAsync();
     }
 
-    public async Task<GetDataResult> GetDataAsync()
+    public async Task<DataGetResult> DataGetAsync()
     {
         using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Get, "data"));
         if (response is null)
         {
-            return new GetDataResult(ApiOutcome.Unauthorized, null);
+            return new DataGetResult(ApiOutcome.Unauthorized, null);
         }
 
         if (response.StatusCode == HttpStatusCode.NoContent)
         {
-            return new GetDataResult(ApiOutcome.NoContent, null);
+            return new DataGetResult(ApiOutcome.NoContent, null);
         }
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            return new GetDataResult(ApiOutcome.Unauthorized, null);
+            return new DataGetResult(ApiOutcome.Unauthorized, null);
         }
 
         if (!response.IsSuccessStatusCode)
         {
-            return new GetDataResult(ApiOutcome.Error, null);
+            return new DataGetResult(ApiOutcome.Error, null);
         }
 
         var data = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.DataGetResponse);
-        return new GetDataResult(ApiOutcome.Ok, data);
+        return new DataGetResult(ApiOutcome.Ok, data);
     }
 
-    public async Task<PutDataResult> PutDataAsync(string data, int version)
+    public async Task<DataPutResult> DataPutAsync(string data, int version)
     {
         using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Put, "data")
         {
@@ -71,29 +71,29 @@ public sealed class ApiClient
 
         if (response is null)
         {
-            return new PutDataResult(ApiOutcome.Unauthorized, 0);
+            return new DataPutResult(ApiOutcome.Unauthorized, 0);
         }
 
         switch (response.StatusCode)
         {
             case HttpStatusCode.Conflict:
-                return new PutDataResult(ApiOutcome.Conflict, 0);
+                return new DataPutResult(ApiOutcome.Conflict, 0);
             case HttpStatusCode.RequestEntityTooLarge:
-                return new PutDataResult(ApiOutcome.TooLarge, 0);
+                return new DataPutResult(ApiOutcome.TooLarge, 0);
             case HttpStatusCode.Unauthorized:
-                return new PutDataResult(ApiOutcome.Unauthorized, 0);
+                return new DataPutResult(ApiOutcome.Unauthorized, 0);
         }
 
         if (!response.IsSuccessStatusCode)
         {
-            return new PutDataResult(ApiOutcome.Error, 0);
+            return new DataPutResult(ApiOutcome.Error, 0);
         }
 
         var body = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.DataPutResponse);
-        return new PutDataResult(ApiOutcome.Ok, body?.Version ?? (version + 1));
+        return new DataPutResult(ApiOutcome.Ok, body?.Version ?? (version + 1));
     }
 
-    public async Task<ApiOutcome> DeleteAccountAsync()
+    public async Task<ApiOutcome> AccountDeleteAsync()
     {
         using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Delete, "account"));
         if (response is null)
@@ -179,6 +179,6 @@ public enum ApiOutcome
     Error
 }
 
-public sealed record GetDataResult(ApiOutcome Outcome, DataGetResponse? Data);
+public sealed record DataGetResult(ApiOutcome Outcome, DataGetResponse? Data);
 
-public sealed record PutDataResult(ApiOutcome Outcome, int Version);
+public sealed record DataPutResult(ApiOutcome Outcome, int Version);

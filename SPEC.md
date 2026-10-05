@@ -416,7 +416,7 @@ Cognito が消えたため v2 テンプレートより依存関係は単純だ�
 - HTTP API。オーソライザーなし(検証は Lambda 内。§6.1)。
 - dev のみ CORS: `AllowOrigins = [https://localhost:5250]`, `AllowHeaders = [authorization, content-type]`, `AllowMethods = [GET, PUT, POST, DELETE]`。prod は CORS 設定なし(CloudFront 同一オリジンのみ)。
 - デフォルトステージに `ThrottlingBurstLimit = 100 / ThrottlingRateLimit = 50` を設定(WAF 見送りの代替。コスト増幅の抑止)。
-- Lambda ×4: dotnet10 / 256MB / 10秒 / LogGroup(dev 1週間・DESTROY / prod 1か月・RETAIN)。ハンドラー名はソースジェネレーター規約 `Template.Backend::Template.Backend.Functions.{Class}_Handle_Generated::Handle`。
+- Lambda ×4: dotnet10 / 256MB / 10秒 / LogGroup(dev 1週間・DESTROY / prod 1か月・RETAIN)。ハンドラー名は `Template.Backend::Template.Backend.Functions.MiniAppFunction::{Method}_Handler`(関数名 = `MiniAppFunction` のメソッド名。§8.1)。
 - IAM(実行ロール、v2 §9.2 継承・関数別に最小化):
 
 | 関数 | Allow | 備考 |

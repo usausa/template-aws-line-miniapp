@@ -90,33 +90,33 @@ public sealed class ApiConstruct : Construct
             env["LINE_JWKS_URL"] = jwksUrl;
         }
 
-        var authLogin = AddRoute(env, "AuthLogin", "AuthLogin", HttpMethod.POST, "/auth/line");
+        var authLogin = AddRoute(env, "AuthLogin", HttpMethod.POST, "/auth/line");
         data.AuthTable.Grant(authLogin, "dynamodb:GetItem", "dynamodb:PutItem");
         secret.Secret.GrantRead(authLogin);
 
-        var dataGet = AddRoute(env, "DataGet", "DataGet", HttpMethod.GET, "/data");
+        var dataGet = AddRoute(env, "DataGet", HttpMethod.GET, "/data");
         data.DataTable.Grant(dataGet, "dynamodb:GetItem");
         secret.Secret.GrantRead(dataGet);
 
-        var dataPut = AddRoute(env, "DataPut", "DataPut", HttpMethod.PUT, "/data");
+        var dataPut = AddRoute(env, "DataPut", HttpMethod.PUT, "/data");
         data.DataTable.Grant(dataPut, "dynamodb:PutItem");
         secret.Secret.GrantRead(dataPut);
 
-        var accountDelete = AddRoute(env, "AccountDelete", "AccountDelete", HttpMethod.DELETE, "/account");
+        var accountDelete = AddRoute(env, "AccountDelete", HttpMethod.DELETE, "/account");
         data.AuthTable.Grant(accountDelete, "dynamodb:DeleteItem");
         data.DataTable.Grant(accountDelete, "dynamodb:DeleteItem");
         secret.Secret.GrantRead(accountDelete);
     }
 
-    // handlerMethod is a [HttpApi] method of MiniAppFunction; the AmazonLambdaExtension source
+    // name is also the [HttpApi] method of MiniAppFunction; the AmazonLambdaExtension source
     // generator emits its Lambda entry point as {Method}_Handler on the same class.
     private Function AddRoute(
-        IDictionary<string, string> env, string name, string handlerMethod, HttpMethod method, string path)
+        IDictionary<string, string> env, string name, HttpMethod method, string path)
     {
         var function = new Function(this, $"{name}Function", new FunctionProps
         {
             Runtime = Runtime.DOTNET_10,
-            Handler = $"Template.Backend::Template.Backend.Functions.MiniAppFunction::{handlerMethod}_Handler",
+            Handler = $"Template.Backend::Template.Backend.Functions.MiniAppFunction::{name}_Handler",
             Code = Code.FromAsset(Artifact),
             MemorySize = 256,
             Timeout = Duration.Seconds(10),

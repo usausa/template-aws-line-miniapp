@@ -51,7 +51,7 @@ public sealed partial class Account
         Deleting = true;
         try
         {
-            var outcome = await Api.DeleteAccountAsync();
+            var outcome = await Api.AccountDeleteAsync();
             if (outcome is ApiOutcome.Ok)
             {
                 Tokens.Clear();

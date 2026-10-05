@@ -65,7 +65,7 @@ public sealed partial class Data
 
     private async Task LoadAsync()
     {
-        var result = await Api.GetDataAsync();
+        var result = await Api.DataGetAsync();
         switch (result.Outcome)
         {
             case ApiOutcome.Ok when result.Data is not null:
@@ -97,7 +97,7 @@ public sealed partial class Data
 
         try
         {
-            var result = await Api.PutDataAsync(DataText, Version);
+            var result = await Api.DataPutAsync(DataText, Version);
             switch (result.Outcome)
             {
                 case ApiOutcome.Ok:
