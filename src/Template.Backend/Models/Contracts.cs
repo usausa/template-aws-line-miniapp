@@ -8,25 +8,25 @@ using System.ComponentModel.DataAnnotations;
 
 // POST /api/auth/line - exchanges a LINE ID token for an app JWT. IdToken is deliberately not
 // [Required]: its checks belong to token validation, which answers with an undifferentiated 401.
-public sealed record LoginRequest(
+public sealed record AuthLoginRequest(
     [property: JsonPropertyName("idToken")] string? IdToken);
 
-public sealed record LoginResponse(
+public sealed record AuthLoginResponse(
     [property: JsonPropertyName("token")] string Token,
     [property: JsonPropertyName("expiresIn")] int ExpiresIn);
 
 // GET /api/data - the caller's stored JSON, or 204 when nothing is stored yet.
-public sealed record DataResponse(
+public sealed record DataGetResponse(
     [property: JsonPropertyName("data")] string Data,
     [property: JsonPropertyName("version")] int Version,
     [property: JsonPropertyName("updatedAt")] string UpdatedAt);
 
 // PUT /api/data - optimistic-locked write. Version is the version the client last read.
-public sealed record PutRequest(
+public sealed record DataPutRequest(
     [property: JsonPropertyName("data")][property: Required(AllowEmptyStrings = true)] string Data,
     [property: JsonPropertyName("version")][property: Range(0, int.MaxValue)] int Version);
 
-public sealed record PutResponse(
+public sealed record DataPutResponse(
     [property: JsonPropertyName("version")] int Version);
 
 public sealed record ErrorResponse(

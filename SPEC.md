@@ -111,7 +111,7 @@ template-aws-line-miniapp/
 │   ├── ServiceResolver.cs                   ← DI 登録([ServiceResolver] から参照される)
 │   ├── Functions/
 │   │   └── MiniAppFunction.cs               ← [Lambda] クラス。[HttpApi] メソッド×4
-│   │       (Login / GetData / PutData / DeleteAccount → {Method}_Handler が生成される)
+│   │       (AuthLogin / DataGet / DataPut / AccountDelete → {Method}_Handler が生成される)
 │   ├── Filters/
 │   │   └── OriginVerifyFilter.cs            ← x-origin-verify 検証(ILambdaFilter、クラス共通・§6.1)
 │   ├── Application/
@@ -122,7 +122,7 @@ template-aws-line-miniapp/
 │   │   ├── JwtIssuer.cs                     ← 自前JWT発行
 │   │   ├── OwnTokenValidator.cs             ← 自前JWT検証(Bearer 解析 + 公開鍵検証)
 │   │   └── UserRepository.cs                ← DynamoDB アクセス(GetItem/PutItem/Transact)
-│   ├── Models/                              ← LoginRequest/LoginResponse/DataResponse/PutRequest 等
+│   ├── Models/                              ← AuthLoginRequest/AuthLoginResponse/DataGetResponse/DataPutRequest 等
 │   ├── FunctionSerializerContext.cs / Assembly.cs / GlobalUsing.cs / GlobalSuppressions.cs
 │   └── Template.Backend.csproj              ← AmazonLambdaExtension 参照(ジェネレーター同梱)
 │
@@ -248,7 +248,7 @@ v2 §6 を継承。テーブル名のみ CDK 自動命名とし、Lambda へは�
 
 | メソッド/パス | 関数 | 認証 | 成功 | エラー |
 |---|---|---|---|---|
-| POST `/api/auth/line` | AuthLineFunction | 不要(オリジン検証のみ) | 200 `{token, expiresIn}` | 401(ID トークン検証失敗。理由は返さない) |
+| POST `/api/auth/line` | AuthLoginFunction | 不要(オリジン検証のみ) | 200 `{token, expiresIn}` | 401(ID トークン検証失敗。理由は返さない) |
 | GET `/api/data` | DataGetFunction | Bearer(自前JWT) | 200 `{data, version, updatedAt}` / 204(未作成) | 401 |
 | PUT `/api/data` | DataPutFunction | Bearer(自前JWT) | 200 `{version}` | 401 / 409(version 不一致) / 413(300KB 超) |
 | DELETE `/api/account` | AccountDeleteFunction | Bearer(自前JWT) | 204 | 401 |
@@ -421,7 +421,7 @@ Cognito が消えたため v2 テンプレートより依存関係は単純だ�
 
 | 関数 | Allow | 備考 |
 |---|---|---|
-| AuthLine | `dynamodb:GetItem`, `PutItem`(AuthTable)+ `secretsmanager:GetSecretValue`(署名鍵) | |
+| AuthLogin | `dynamodb:GetItem`, `PutItem`(AuthTable)+ `secretsmanager:GetSecretValue`(署名鍵) | |
 | DataGet | `dynamodb:GetItem`(DataTable)+ `GetSecretValue` | 検証は公開鍵だが鍵素材は同一 Secret |
 | DataPut | `dynamodb:PutItem`(DataTable)+ `GetSecretValue` | |
 | AccountDelete | `dynamodb:DeleteItem`(両テーブル)+ `GetSecretValue` | Transact は Delete 権限で許可される |

@@ -45,7 +45,7 @@ public partial class MiniAppFunction
     // and returns an app JWT. Any validation failure is a bare 401 - the reason is never disclosed
     // (SPEC 3.4).
     [HttpApi(LambdaHttpMethod.Post, "/api/auth/line")]
-    public async ValueTask<IHttpResult> Login([FromBody] LoginRequest request, ILambdaContext context)
+    public async ValueTask<IHttpResult> AuthLogin([FromBody] AuthLoginRequest request, ILambdaContext context)
     {
         if (string.IsNullOrWhiteSpace(request.IdToken))
         {
@@ -65,14 +65,14 @@ public partial class MiniAppFunction
         context.Logger.LogInformation(
             $"{{\"event\":\"auth.line\",\"userId\":\"{internalUserId}\",\"requestId\":\"{context.AwsRequestId}\"}}");
 
-        return HttpResults.Ok(new LoginResponse(token, expiresIn));
+        return HttpResults.Ok(new AuthLoginResponse(token, expiresIn));
     }
 
     // GET /api/data - returns the caller's stored JSON, or 204 when nothing is stored yet.
     // The user id comes only from the verified token; there is no userId parameter to tamper with
     // (SPEC 7.3).
     [HttpApi(LambdaHttpMethod.Get, "/api/data")]
-    public async ValueTask<IHttpResult> GetData(
+    public async ValueTask<IHttpResult> DataGet(
         ILambdaContext context,
         [FromHeader("authorization")] string authorization = "")
     {
@@ -99,8 +99,8 @@ public partial class MiniAppFunction
     //   409 -> the client's version is stale (another device wrote first); re-read and merge
     //   413 -> the payload exceeds the hard limit, refused before it can approach DynamoDB's 400 KB
     [HttpApi(LambdaHttpMethod.Put, "/api/data")]
-    public async ValueTask<IHttpResult> PutData(
-        [FromBody] PutRequest request,
+    public async ValueTask<IHttpResult> DataPut(
+        [FromBody] DataPutRequest request,
         ILambdaContext context,
         [FromHeader("authorization")] string authorization = "")
     {
@@ -131,14 +131,14 @@ public partial class MiniAppFunction
         context.Logger.LogInformation(
             $"{{\"event\":\"data.write\",\"userId\":\"{user.Sub}\",\"version\":{outcome.NewVersion},\"requestId\":\"{context.AwsRequestId}\"}}");
 
-        return HttpResults.Ok(new PutResponse(outcome.NewVersion));
+        return HttpResults.Ok(new DataPutResponse(outcome.NewVersion));
     }
 
     // DELETE /api/account - removes the user's auth mapping and data in one transaction (SPEC 7.5).
     // Both keys come from the verified token: sub (data row) and line_sub (auth row) - the whole
     // reason line_sub rides in the JWT (SPEC 4.2).
     [HttpApi(LambdaHttpMethod.Delete, "/api/account")]
-    public async ValueTask<IHttpResult> DeleteAccount(
+    public async ValueTask<IHttpResult> AccountDelete(
         ILambdaContext context,
         [FromHeader("authorization")] string authorization = "")
     {

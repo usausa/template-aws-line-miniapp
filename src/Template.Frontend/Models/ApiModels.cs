@@ -4,23 +4,23 @@ using System.Text.Json.Serialization;
 
 // JSON contract with the backend. Property names match the API responses in SPEC 6.
 
-public sealed record LoginRequest(
+public sealed record AuthLoginRequest(
     [property: JsonPropertyName("idToken")] string IdToken);
 
-public sealed record LoginResponse(
+public sealed record AuthLoginResponse(
     [property: JsonPropertyName("token")] string Token,
     [property: JsonPropertyName("expiresIn")] int ExpiresIn);
 
-public sealed record DataResponse(
+public sealed record DataGetResponse(
     [property: JsonPropertyName("data")] string Data,
     [property: JsonPropertyName("version")] int Version,
     [property: JsonPropertyName("updatedAt")] string UpdatedAt);
 
-public sealed record PutRequest(
+public sealed record DataPutRequest(
     [property: JsonPropertyName("data")] string Data,
     [property: JsonPropertyName("version")] int Version);
 
-public sealed record PutResponse(
+public sealed record DataPutResponse(
     [property: JsonPropertyName("version")] int Version);
 
 // Subset of liff.getProfile() surfaced to the UI. Populated by the JS interop layer.

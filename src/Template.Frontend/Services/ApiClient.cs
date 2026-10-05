@@ -58,7 +58,7 @@ public sealed class ApiClient
             return new GetDataResult(ApiOutcome.Error, null);
         }
 
-        var data = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.DataResponse);
+        var data = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.DataGetResponse);
         return new GetDataResult(ApiOutcome.Ok, data);
     }
 
@@ -66,7 +66,7 @@ public sealed class ApiClient
     {
         using var response = await SendAsync(() => new HttpRequestMessage(HttpMethod.Put, "data")
         {
-            Content = JsonContent.Create(new PutRequest(data, version), ApiSerializerContext.Default.PutRequest)
+            Content = JsonContent.Create(new DataPutRequest(data, version), ApiSerializerContext.Default.DataPutRequest)
         });
 
         if (response is null)
@@ -89,7 +89,7 @@ public sealed class ApiClient
             return new PutDataResult(ApiOutcome.Error, 0);
         }
 
-        var body = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.PutResponse);
+        var body = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.DataPutResponse);
         return new PutDataResult(ApiOutcome.Ok, body?.Version ?? (version + 1));
     }
 
@@ -119,13 +119,13 @@ public sealed class ApiClient
         }
 
         using var response = await http.PostAsJsonAsync(
-            "auth/line", new LoginRequest(idToken), ApiSerializerContext.Default.LoginRequest);
+            "auth/line", new AuthLoginRequest(idToken), ApiSerializerContext.Default.AuthLoginRequest);
         if (!response.IsSuccessStatusCode)
         {
             return false;
         }
 
-        var login = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.LoginResponse);
+        var login = await response.Content.ReadFromJsonAsync(ApiSerializerContext.Default.AuthLoginResponse);
         if (login is null)
         {
             return false;
@@ -179,6 +179,6 @@ public enum ApiOutcome
     Error
 }
 
-public sealed record GetDataResult(ApiOutcome Outcome, DataResponse? Data);
+public sealed record GetDataResult(ApiOutcome Outcome, DataGetResponse? Data);
 
 public sealed record PutDataResult(ApiOutcome Outcome, int Version);

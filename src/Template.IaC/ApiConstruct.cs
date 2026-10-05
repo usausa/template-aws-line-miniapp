@@ -90,19 +90,19 @@ public sealed class ApiConstruct : Construct
             env["LINE_JWKS_URL"] = jwksUrl;
         }
 
-        var authLine = AddRoute(env, "AuthLine", "Login", HttpMethod.POST, "/auth/line");
-        data.AuthTable.Grant(authLine, "dynamodb:GetItem", "dynamodb:PutItem");
-        secret.Secret.GrantRead(authLine);
+        var authLogin = AddRoute(env, "AuthLogin", "AuthLogin", HttpMethod.POST, "/auth/line");
+        data.AuthTable.Grant(authLogin, "dynamodb:GetItem", "dynamodb:PutItem");
+        secret.Secret.GrantRead(authLogin);
 
-        var dataGet = AddRoute(env, "DataGet", "GetData", HttpMethod.GET, "/data");
+        var dataGet = AddRoute(env, "DataGet", "DataGet", HttpMethod.GET, "/data");
         data.DataTable.Grant(dataGet, "dynamodb:GetItem");
         secret.Secret.GrantRead(dataGet);
 
-        var dataPut = AddRoute(env, "DataPut", "PutData", HttpMethod.PUT, "/data");
+        var dataPut = AddRoute(env, "DataPut", "DataPut", HttpMethod.PUT, "/data");
         data.DataTable.Grant(dataPut, "dynamodb:PutItem");
         secret.Secret.GrantRead(dataPut);
 
-        var accountDelete = AddRoute(env, "AccountDelete", "DeleteAccount", HttpMethod.DELETE, "/account");
+        var accountDelete = AddRoute(env, "AccountDelete", "AccountDelete", HttpMethod.DELETE, "/account");
         data.AuthTable.Grant(accountDelete, "dynamodb:DeleteItem");
         data.DataTable.Grant(accountDelete, "dynamodb:DeleteItem");
         secret.Secret.GrantRead(accountDelete);

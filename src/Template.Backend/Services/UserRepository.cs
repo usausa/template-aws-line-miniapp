@@ -72,7 +72,7 @@ public sealed class UserRepository
         }
     }
 
-    public async Task<DataResponse?> GetDataAsync(string internalUserId)
+    public async Task<DataGetResponse?> GetDataAsync(string internalUserId)
     {
         var response = await ddb.GetItemAsync(new GetItemRequest
         {
@@ -90,7 +90,7 @@ public sealed class UserRepository
         }
 
         var item = response.Item;
-        return new DataResponse(
+        return new DataGetResponse(
             item["data"].S,
             int.Parse(item["version"].N, CultureInfo.InvariantCulture),
             item["updatedAt"].S);

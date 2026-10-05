@@ -265,11 +265,11 @@ template-aws-line-miniapp/
 ├── SPEC.md                                  ← 実装仕様（v2 仕様からの写像。本 README の上流）
 ├── Template.Backend/                        ← Lambda (net10.0, 管理 dotnet10)
 │   ├── ServiceResolver.cs                   ← DI 登録（[ServiceResolver] から参照）
-│   ├── Functions/MiniAppFunction.cs         ← [Lambda] + [HttpApi]×4（Login/GetData/PutData/DeleteAccount）
+│   ├── Functions/MiniAppFunction.cs         ← [Lambda] + [HttpApi]×4（AuthLogin/DataGet/DataPut/AccountDelete）
 │   ├── Filters/OriginVerifyFilter.cs        ← x-origin-verify 検証（ILambdaFilter・クラス共通）
 │   ├── Application/BackendOptions.cs        ← 環境変数の読み取り
 │   ├── Services/                            ← LineTokenValidator / SigningKeyProvider / JwtIssuer / OwnTokenValidator / UserRepository
-│   └── Models/                              ← Contracts（Login/Data/Put。DataAnnotations 検証付き）
+│   └── Models/                              ← Contracts（AuthLogin/DataGet/DataPut。DataAnnotations 検証付き）
 ├── Template.Frontend/                       ← Blazor WebAssembly (net10.0)
 │   ├── Services/                            ← LiffService / TokenStore（メモリ保持）/ ApiClient（401時1回だけ再交換）
 │   ├── Components/Pages/                    ← Home / Data / Account / NotFound
