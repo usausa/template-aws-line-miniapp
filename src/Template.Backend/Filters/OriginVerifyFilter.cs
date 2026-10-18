@@ -23,7 +23,7 @@ public sealed class OriginVerifyFilter : ILambdaFilter
     {
         if (options.OriginVerify.Length > 0)
         {
-            var request = context.GetRequest<APIGatewayHttpApiV2ProxyRequest>();
+            var request = context.GetRequestAs<APIGatewayHttpApiV2ProxyRequest>();
             if (!string.Equals(FindHeader(request), options.OriginVerify, StringComparison.Ordinal))
             {
                 context.Result = HttpResults.Forbid();
