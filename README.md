@@ -1,136 +1,138 @@
 # template-aws-line-miniapp
 
-LINE ミニアプリ（LIFF）向けの、**ユーザ別 JSON データ管理サービス**のテンプレート。
-Blazor WebAssembly（.NET 10）を CloudFront + S3 で配信し、LINE ログインで認証、ユーザーごとの少量 JSON を DynamoDB に保存する。
+English | [日本語](README.ja.md)
 
-認証は **2 トークン方式**（LINE の ID トークン → 自前 JWT に載せ替え）で、「このリクエストは誰のものか」を偽造不可能な形で確定させることだけに集中している。設計思想の全文は [SPEC.md](SPEC.md)（およびその上流の `line-miniapp-spec-v2.md`）を参照。
+Template of a **per-user JSON data management service** for LINE MINI Apps (LIFF).
+It delivers Blazor WebAssembly (.NET 10) with CloudFront + S3, authenticates with LINE Login, and stores a small amount of JSON per user in DynamoDB.
 
-> このテンプレートは [template-aws-s3-wasm](../template-aws-s3-wasm) と同じプロジェクト構造・ビルド/デプロイ手順・コーディング規約を踏襲している。認証だけが Cognito から LINE + 自前 JWT に置き換わり、データストアが S3 から DynamoDB に変わっている。
+Authentication uses a **two-token scheme** (the LINE ID token is exchanged for the app's own JWT) and focuses solely on determining "whose request this is" in a way that cannot be forged. For the full design philosophy, see [SPEC.md](SPEC.md) (and its upstream `line-miniapp-spec-v2.md`).
 
----
-
-## 📖 概要
-
-### できること
-
-- LINE（LIFF）でサインインし、**そのユーザー自身の JSON データだけ**を取得・保存できる
-- 楽観ロック（`version`）で、複数端末の同時編集による上書き消失を防ぐ
-- 退会（`DELETE /api/account`）で認証マッピングとデータを 1 トランザクションで削除する
-- インフラ一式が CDK (C#) で再現でき、数コマンドでデプロイ・削除できる
-- **LINE 実機なしで**主要機能を AWS 上で自動検証できる（テスト用 JWKS 機構）
-
-### 設計の中心思想（[SPEC.md](SPEC.md) §1 より）
-
-1. **クライアントを一切信頼しない** — エンドポイントは誰でも `curl` で叩ける。守るのは「誰のリクエストか」の確定だけ
-2. **信頼の連鎖** — LINE の秘密鍵 → LINE 公開鍵で検証 → 自前秘密鍵で署名 → 自前公開鍵で検証 → DynamoDB の PK。どこにもクライアントの善意が入らない
-3. **認可を if 文でなくキー構造にする** — `PK = USER#{トークン由来の internalUserId}`。API のシグネチャに `userId` が存在しないため、他人のデータへ渡す経路自体が無い
+> This template follows the same project structure, build/deploy procedures, and coding conventions as [template-aws-s3-wasm](../template-aws-s3-wasm). Only the authentication is replaced from Cognito with LINE + the own JWT, and the data store changes from S3 to DynamoDB.
 
 ---
 
-## 🏗️ アーキテクチャ
+## 📖 Overview
+
+### What it does
+
+- Sign in with LINE (LIFF) and get and save **only the user's own JSON data**
+- Optimistic locking (`version`) prevents lost updates from simultaneous edits on multiple devices
+- Account deletion (`DELETE /api/account`) deletes the authentication mapping and the data in one transaction
+- The whole infrastructure is reproducible with CDK (C#) and can be deployed and removed with a few commands
+- The main features can be verified automatically on AWS **without a real LINE device** (test JWKS mechanism)
+
+### Core design principles (from [SPEC.md](SPEC.md) §1)
+
+1. **Never trust the client** — anyone can call the endpoints with `curl`. The only thing to protect is determining whose request it is
+2. **Chain of trust** — LINE private key → verified with the LINE public key → signed with the own private key → verified with the own public key → DynamoDB PK. The client's good faith is not relied on anywhere
+3. **Authorization by key structure, not by if statements** — `PK = USER#{internalUserId from the token}`. Because `userId` does not exist in the API signatures, there is no path to another user's data at all
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 graph LR
-    subgraph Client["LINEアプリ / ブラウザ"]
+    subgraph Client["LINE app / Browser"]
         App[Blazor WASM + LIFF SDK]
     end
 
     subgraph AWS
-        CF[CloudFront<br/>OAC + CSP<br/>SPAフォールバック]
-        AppBucket[(S3: アプリバケット<br/>非公開)]
+        CF[CloudFront<br/>OAC + CSP<br/>SPA fallback]
+        AppBucket[(S3: app bucket<br/>private)]
         API[API Gateway HTTP API]
-        Fn[Lambda x4<br/>dotnet10 管理RT]
+        Fn[Lambda x4<br/>dotnet10 managed RT]
         DDB[(DynamoDB<br/>auth / data)]
-        SM[Secrets Manager<br/>JWT署名鍵 ES256]
+        SM[Secrets Manager<br/>JWT signing key ES256]
     end
 
-    App -- "① アプリ配信 (匿名)" --> CF
+    App -- "① App delivery (anonymous)" --> CF
     CF --> AppBucket
     App -- "② POST /api/auth/line { idToken }" --> CF
-    App -- "③ GET/PUT /api/data + Bearer 自前JWT" --> CF
-    CF -- "同一オリジンのまま転送<br/>+ x-origin-verify ヘッダー" --> API
+    App -- "③ GET/PUT /api/data + Bearer own JWT" --> CF
+    CF -- "Forwarded as the same origin<br/>+ x-origin-verify header" --> API
     API --> Fn
-    Fn -- "GetItem/PutItem のみ" --> DDB
-    Fn -- "署名鍵を15分キャッシュ" --> SM
-    App -. "LINE ID トークン取得" .-> LINE[LINE Platform<br/>JWKS: api.line.me]
+    Fn -- "GetItem/PutItem only" --> DDB
+    Fn -- "Caches the signing key for 15 minutes" --> SM
+    App -. "Gets the LINE ID token" .-> LINE[LINE Platform<br/>JWKS: api.line.me]
 ```
 
-S3 は**静的ファイル配信のみ**。ユーザーデータ用バケットは作らない（データは DynamoDB）。
+S3 is **only for static file delivery**. No bucket is created for user data (the data is in DynamoDB).
 
-### AWS リソース
+### AWS resources
 
-| リソース | 用途 | 要点 |
+| Resource | Purpose | Key points |
 |---|---|---|
-| S3（アプリ） | Blazor publish 出力 | パブリックアクセス全ブロック / OAC のみ / dev は autoDelete |
-| CloudFront | アプリ配信 + API 前段 | OAC / HTTPS 強制 / 403・404→`/index.html` / セキュリティヘッダー + CSP / `/api/*` はキャッシュ無効・`x-origin-verify` 付与 |
-| API Gateway HTTP API | API の入口 | オーソライザーなし（JWT 検証は Lambda 内）。dev のみ localhost CORS。ステージスロットリング |
-| Lambda ×4 | auth-line / data-get / data-put / account-delete | dotnet10 管理ランタイム / 256MB / 10秒 / 1 publish 成果物を共有 |
-| DynamoDB ×2 | AuthTable / DataTable | オンデマンド / PITR は prod のみ / dev は DESTROY |
-| Secrets Manager | JWT 署名鍵（ES256 PEM） | CDK は器のみ、値は `init-jwt-key.ps1` で投入。Lambda は 15 分キャッシュ |
-| CloudWatch Logs | Lambda ログ | dev 1週間 / prod 1か月 |
+| S3 (app) | Blazor publish output | Block all public access / OAC only / autoDelete in dev |
+| CloudFront | App delivery + API front | OAC / HTTPS enforced / 403 and 404 → `/index.html` / security headers + CSP / `/api/*` with caching disabled and `x-origin-verify` added |
+| API Gateway HTTP API | API entry point | No authorizer (JWT validation is in Lambda). localhost CORS in dev only. Stage throttling |
+| Lambda ×4 | auth-line / data-get / data-put / account-delete | dotnet10 managed runtime / 256MB / 10 seconds / share one publish artifact |
+| DynamoDB ×2 | AuthTable / DataTable | On-demand / PITR in prod only / DESTROY in dev |
+| Secrets Manager | JWT signing key (ES256 PEM) | CDK creates only the container, and `init-jwt-key.ps1` puts the value. Lambda caches it for 15 minutes |
+| CloudWatch Logs | Lambda logs | 1 week in dev / 1 month in prod |
 
-### なぜ Lambda 内で JWT を検証するのか（S3+Cognito テンプレートとの違い）
+### Why the JWT is validated in Lambda (difference from the S3 + Cognito template)
 
-template-aws-s3-wasm は API Gateway の JWT オーソライザーで認証する。本テンプレートは**アプリが自前で JWT を発行・検証する**ため、認証は Lambda 内（`OriginVerifyFilter` + `OwnTokenValidator`）で行う。API Gateway が担うのはルーティングとスロットリングだけで、認証・認可はすべてコード側にある。これは v2 仕様の 2 トークン方式（LINE の 1 時間制約を回避するための自前 JWT）を成立させるための必然的な帰結。
+template-aws-s3-wasm authenticates with the JWT authorizer of API Gateway. In this template, **the app issues and validates its own JWT**, so authentication is done in Lambda (`OriginVerifyFilter` + `OwnTokenValidator`). API Gateway handles only routing and throttling, and all authentication and authorization is in the code. This follows inevitably from the two-token scheme of the v2 spec (the own JWT avoids the one-hour limit of LINE).
 
-### Lambda の実装形態（AmazonLambdaExtension）
+### Lambda implementation style (AmazonLambdaExtension)
 
-ハンドラーは [AmazonLambdaExtension](https://github.com/usausa/amazon-lambda-extension)（ソースジェネレーター。NuGet `2.0.0-beta4`、ジェネレーター同梱）で記述している。
+The handlers are written with [AmazonLambdaExtension](https://github.com/usausa/amazon-lambda-extension) (a source generator. NuGet `2.0.0-beta4`, generator included).
 
-- `[Lambda]` を付けた単一クラス `MiniAppFunction` に `[HttpApi(method, path)]` メソッド×4。各メソッドの Lambda エントリポイント `{Method}_Handler` が同クラスに生成される
-- パラメーターは `[FromBody]`（SG ベースの JSON + DataAnnotations 検証で不正 JSON は 400）と `[FromHeader("authorization")] string authorization = ""` で受ける（ヘッダーは**既定値必須**。`string?` などの null 許容注釈型はバインディング非対応 = ALE0019）
-- x-origin-verify の検証は `ILambdaFilter`（`OriginVerifyFilter`）としてクラス共通に適用。JWT 検証は「`sub` の出所が検証済みトークンのみ」を可視に保つため、あえて各ハンドラー先頭に置いている
-- DI は `[ServiceResolver(typeof(ServiceResolver))]` + `ServiceResolver.ConfigureServices()`。`ILambdaSerializer` / `IBodySerializer` / `IRequestValidator` もここで登録する
-- `[HttpApi]` のルートテンプレートはドキュメント兼ルートパラメーターバインディング用で、実ルーティングは CDK 側にある（テンプレートの「インフラ記述を1箇所に」方針を維持）
-- Amazon.Lambda.Annotations と異なり `serverless.template` は生成されない（削除ターゲット不要）
+- Four `[HttpApi(method, path)]` methods in the single class `MiniAppFunction` marked with `[Lambda]`. The Lambda entry point `{Method}_Handler` of each method is generated in the same class
+- Parameters are received with `[FromBody]` (SG-based JSON + DataAnnotations validation, and invalid JSON returns 400) and `[FromHeader("authorization")] string authorization = ""` (headers **require a default value**. Nullable annotated types such as `string?` are not supported for binding = ALE0019)
+- The x-origin-verify check is applied to the whole class as an `ILambdaFilter` (`OriginVerifyFilter`). The JWT validation is deliberately placed at the top of each handler to keep it visible that "`sub` comes only from a validated token"
+- DI uses `[ServiceResolver(typeof(ServiceResolver))]` + `ServiceResolver.ConfigureServices()`. `ILambdaSerializer` / `IBodySerializer` / `IRequestValidator` are also registered here
+- The route template of `[HttpApi]` serves as documentation and for route parameter binding, and the actual routing is on the CDK side (keeping the template's policy of "infrastructure definitions in one place")
+- Unlike Amazon.Lambda.Annotations, `serverless.template` is not generated (no removal target is needed)
 
-> 変換前の Amazon.Lambda.Annotations 版は `../template-aws-line-miniapp-backup` にスナップショットとして保存してある。
+> The Amazon.Lambda.Annotations version before the conversion is saved as a snapshot in `../template-aws-line-miniapp-backup`.
 
 ---
 
-## 🔐 認証（2 トークン方式）
+## 🔐 Authentication (two-token scheme)
 
-| | LINE ID トークン | 自前 JWT |
+| | LINE ID token | Own JWT |
 |---|---|---|
-| 発行者 | LINE ヤフー | 自 Lambda |
-| 署名 | ES256（LINE 秘密鍵、JWKS で検証） | ES256（Secrets Manager の鍵） |
-| 有効期限 | **1時間・変更不可** | **7日**（`JWT_LIFETIME_DAYS`） |
-| 検証場所 | `POST /api/auth/line` のみ | 全保護 API（Lambda 内共通） |
-| 保管場所 | LIFF の localStorage（触らない） | **メモリのみ**（`TokenStore`。localStorage 禁止） |
+| Issuer | LY Corporation | Own Lambda |
+| Signature | ES256 (LINE private key, verified with JWKS) | ES256 (key in Secrets Manager) |
+| Lifetime | **1 hour, cannot be changed** | **7 days** (`JWT_LIFETIME_DAYS`) |
+| Validated at | `POST /api/auth/line` only | All protected APIs (shared in Lambda) |
+| Stored in | localStorage of LIFF (not touched) | **Memory only** (`TokenStore`. localStorage is prohibited) |
 
-起動直後に ID トークンを 1 回だけ自前 JWT に交換し、以後 LINE トークンは使わない。これで「1 時間で黙って壊れる」問題が設計から消える。詳細と 4 つの期限切れ状態は [SPEC.md](SPEC.md) §4 / `line-miniapp-spec-v2.md` §2〜3。
+Right after startup, the ID token is exchanged for the own JWT only once, and the LINE token is not used after that. This removes the "silently breaks after one hour" problem by design. For details and the four expiration states, see [SPEC.md](SPEC.md) §4 / `line-miniapp-spec-v2.md` §2-3.
 
-自前 JWT のクレーム: `sub`=internalUserId（`usr_`+GUID v7）、`line_sub`=lineUserId（退会時の AuthTable 削除にのみ使用・**ログ出力禁止**）。
+Claims of the own JWT: `sub`=internalUserId (`usr_`+GUID v7), `line_sub`=lineUserId (used only to delete from AuthTable on account deletion, **must not be logged**).
 
 ---
 
-## 📇 データモデル（DynamoDB）
+## 📇 Data model (DynamoDB)
 
-| テーブル | PK | その他 |
+| Table | PK | Others |
 |---|---|---|
 | AuthTable | `LINE#{lineUserId}` | `internalUserId`, `createdAt` |
-| DataTable | `USER#{internalUserId}` | `data`(JSON文字列), `version`(楽観ロック), `updatedAt` |
+| DataTable | `USER#{internalUserId}` | `data`(JSON string), `version`(optimistic lock), `updatedAt` |
 
-ソートキーなし / GSI なし / オンデマンド。1 ユーザー 1 アイテム、アクセスパターンは 1 種類。`Scan`/`Query` は IAM で明示 Deny（[SPEC.md](SPEC.md) §9.4）。
+No sort key / no GSI / on-demand. One item per user, with a single access pattern. `Scan`/`Query` are explicitly denied by IAM ([SPEC.md](SPEC.md) §9.4).
 
 ---
 
-## 🔧 テンプレートから新規プロジェクトを作る
+## 🔧 Creating a new project from the template
 
-置き換える対象は 2 系統。
+There are two kinds of names to replace.
 
-| 系統 | 現在の値 | 使われる場所 |
+| Kind | Current value | Used in |
 |---|---|---|
-| プロジェクト名（PascalCase） | `Template` | 名前空間・プロジェクト名・ディレクトリ名・アセンブリ名・**Lambda ハンドラー名** |
-| デプロイ名（kebab-case） | `template-aws-line-miniapp` | CloudFormation スタック名・S3 名の一部 |
+| Project name (PascalCase) | `Template` | Namespaces, project names, directory names, assembly names, **Lambda handler names** |
+| Deploy name (kebab-case) | `template-aws-line-miniapp` | CloudFormation stack name, part of the S3 names |
 
-リポジトリルートで実行（先頭 2 行を自分の値に変える）:
+Run at the repository root (change the first two lines to your own values):
 
 ```powershell
-$Name   = 'Acme'              # PascalCase。名前空間・アセンブリ名になる
-$Deploy = 'acme-miniapp'      # kebab-case。CloudFormation スタック名になる
+$Name   = 'Acme'              # PascalCase. Becomes the namespaces and assembly names
+$Deploy = 'acme-miniapp'      # kebab-case. Becomes the CloudFormation stack name
 
-# 1. ファイル内容を置換（.git と成果物ディレクトリは除外）
+# 1. Replace the file contents (excluding .git and the output directories)
 Get-ChildItem -Recurse -File |
     Where-Object { $_.FullName -notmatch '\\(\.git|bin|obj|publish|publish-api|cdk\.out|node_modules)\\' } |
     ForEach-Object {
@@ -139,97 +141,97 @@ Get-ChildItem -Recurse -File |
         if ($new -ne $body) { Set-Content $_.FullName $new -NoNewline }
     }
 
-# 2. プロジェクトファイルとディレクトリをリネーム
+# 2. Rename the project files and directories
 foreach ($p in 'Backend', 'Frontend', 'IaC') {
     Rename-Item "Template.$p/Template.$p.csproj" "$Name.$p.csproj"
     Rename-Item "Template.$p" "$Name.$p"
 }
 Get-ChildItem -Filter 'Template.*.slnx' | ForEach-Object { Rename-Item $_.FullName ($_.Name -replace '^Template', $Name) }
 
-# 3. 確認
+# 3. Verify
 dotnet build
 ```
 
-> ⚠️ 置換は必ず**ドット付きの `Template.`** で行う（`Template` 単体だと本文の「テンプレート」等を巻き込む）。
-> ⚠️ 最も事故るのは `Template.IaC/ApiConstruct.cs` の **Lambda ハンドラー名**。文字列がずれても `cdk deploy` は成功し、**API 呼び出しだけが実行時に 500** になる。上の置換で直るが、手作業リネーム時はここを最初に疑う。
+> ⚠️ Always replace **`Template.` with the dot** (replacing `Template` alone also hits other occurrences, such as the word "Template" in descriptions).
+> ⚠️ The most error-prone place is the **Lambda handler names** in `Template.IaC/ApiConstruct.cs`. Even if the strings are wrong, `cdk deploy` succeeds, and **only the API calls fail with 500 at run time**. The replacement above fixes them, but suspect this place first when renaming by hand.
 
 ---
 
-## 🚀 セットアップ（初回構築）
+## 🚀 Setup (initial build)
 
-### 必要なもの
+### Requirements
 
 - .NET SDK 10.0+
-- Node.js 20+（CDK CLI 実行用）
-- AWS CLI v2（認証情報設定済み）
+- Node.js 20+ (to run the CDK CLI)
+- AWS CLI v2 (with credentials configured)
 - PowerShell 7+
 
-### 事前設定
+### Preparation
 
-`Template.IaC/cdk.json` の各環境の値を設定する。
+Set the values of each environment in `Template.IaC/cdk.json`.
 
-| キー | 内容 |
+| Key | Description |
 |---|---|
-| `lineChannelId` | LINE ミニアプリ / LINE ログインチャネルの ID（ID トークンの `aud` 検証に使う） |
-| `liffId` | デプロイ先（CloudFront）を endpoint URL に設定した LIFF アプリの ID |
-| `liffIdLocal` | ローカル開発用（`https://localhost:5250`）の LIFF アプリの ID（dev のみ） |
-| `allowLocalhost` | dev は `true`（HTTP API に localhost CORS を付与） |
-| `testJwks` | dev のみ `true` 可（テスト用 JWKS を使い、実機なしで検証可能にする）。**prod で true にすると synth が失敗する** |
+| `lineChannelId` | ID of the LINE MINI App / LINE Login channel (used to validate `aud` of the ID token) |
+| `liffId` | ID of the LIFF app whose endpoint URL is set to the deployment (CloudFront) |
+| `liffIdLocal` | ID of the LIFF app for local development (`https://localhost:5250`) (dev only) |
+| `allowLocalhost` | `true` in dev (adds localhost CORS to the HTTP API) |
+| `testJwks` | Can be `true` in dev only (uses the test JWKS so that verification works without a real device). **Setting it to true in prod makes synth fail** |
 
-> 同梱の `dev` は自動検証がそのまま通るダミー値（`lineChannelId: "2000000001"` 等）が入っている。実機で使うときは実値に置き換える。
+> The bundled `dev` contains dummy values (such as `lineChannelId: "2000000001"`) that pass the automated verification as is. Replace them with real values when using a real device.
 
-### 構築手順
+### Build steps
 
 ```powershell
-# 1. Lambda 成果物を用意（CDK がアセットとして取り込む）
+# 1. Prepare the Lambda artifact (CDK takes it in as an asset)
 ./scripts/deploy-api.ps1
 
-# 2. インフラをデプロイ
+# 2. Deploy the infrastructure
 cd Template.IaC
-npx --yes aws-cdk@latest bootstrap        # アカウント×リージョンで初回のみ
+npx --yes aws-cdk@latest bootstrap        # Only the first time per account × region
 npx --yes aws-cdk@latest deploy -c env=dev --require-approval never --outputs-file ../cdk-outputs.dev.json
 cd ..
 
-# 3. JWT 署名鍵を投入（冪等。既に本物の鍵があればスキップ）
+# 3. Put the JWT signing key (idempotent. Skipped if a real key already exists)
 ./scripts/init-jwt-key.ps1 -Env dev
 
-# 4. アプリをビルドして配信
+# 4. Build and deliver the app
 ./scripts/deploy-app.ps1 -Env dev
 
-# 5. (自動検証) 実機・LINE 設定なしで受け入れテストを実行
+# 5. (Automated verification) Run the acceptance tests without a real device or LINE settings
 ./scripts/test-acceptance.ps1 -Env dev
 
-# 6. (実機検証) LINE Developers で LIFF エンドポイント URL を CloudFront ドメインへ変更し、
-#    LINE アプリから LIFF URL を開く
+# 6. (Verification on a real device) Change the LIFF endpoint URL to the CloudFront domain in LINE Developers,
+#    and open the LIFF URL from the LINE app
 ```
 
-最初のマイルストーンは「`POST /api/auth/line` の疎通」。`testJwks` により**実機前に**確認できる。
+The first milestone is "`POST /api/auth/line` works end to end". With `testJwks`, it can be checked **before using a real device**.
 
 ---
 
-## ✅ 受け入れテスト（`test-acceptance.ps1`）
+## ✅ Acceptance tests (`test-acceptance.ps1`)
 
-dev + `testJwks=true` 前提。スクリプトが P-256 テスト鍵を生成し、その公開鍵を**テスト用 JWKS** としてアプリバケットに配置、秘密鍵で LINE 形式の ID トークンを偽造して、`POST /api/auth/line` 以降の全経路を実 AWS 上で検証する（テスト鍵は本物の LINE 鍵ではなく、dev が `LINE_JWKS_URL` をこの JWKS に向けているからのみ通る）。
+Requires dev + `testJwks=true`. The script generates a P-256 test key, places its public key in the app bucket as the **test JWKS**, forges a LINE-format ID token with the private key, and verifies all paths from `POST /api/auth/line` onward on real AWS (the test key is not a real LINE key, and it passes only because dev points `LINE_JWKS_URL` to this JWKS).
 
-| # | テスト | 期待 |
+| # | Test | Expected |
 |---|---|---|
-| 1 | トークンなしで `GET /api/data` | 401 |
-| 2 | `?userId=...` は無視される（API に受け口がない） | パラメータ有無で同じ結果 |
-| 3 | 自前 JWT の `sub` を改ざん | 401（署名不一致） |
-| 4 | `alg=none` の JWT | 401 |
-| 5 | 期限切れ LINE ID トークンで交換 | 401（exp 検証） |
-| 6 | `aud` が別チャネルの LINE トークンで交換 | 401 |
-| 7 | 古い version で `PUT` | 409 |
-| 8 | 300KB 超の `PUT` | 413 |
-| 9 | execute-api へ直接アクセス（CloudFront 迂回） | 403（`x-origin-verify` なし） |
-| 10 | ライフサイクル（交換→204→PUT→GET→退会→204） | 全 PASS |
-| 11 | 同一 LINE ユーザーは同じ internalUserId、退会後は新規発行 | PASS |
+| 1 | `GET /api/data` without a token | 401 |
+| 2 | `?userId=...` is ignored (the API has no parameter for it) | Same result with or without the parameter |
+| 3 | Tamper with `sub` of the own JWT | 401 (signature mismatch) |
+| 4 | JWT with `alg=none` | 401 |
+| 5 | Exchange with an expired LINE ID token | 401 (exp validation) |
+| 6 | Exchange with a LINE token whose `aud` is another channel | 401 |
+| 7 | `PUT` with an old version | 409 |
+| 8 | `PUT` over 300KB | 413 |
+| 9 | Direct access to execute-api (bypassing CloudFront) | 403 (no `x-origin-verify`) |
+| 10 | Lifecycle (exchange → 204 → PUT → GET → delete account → 204) | All PASS |
+| 11 | The same LINE user gets the same internalUserId, and a new one after account deletion | PASS |
 
-**検証実績（2026-08-30）**: dev 環境に一度デプロイし、上記 11 項目すべて PASS を確認、フロント配信（CSP・WASM ブート）も確認したうえで**削除済み**。同日の AmazonLambdaExtension への実装変換後にも再デプロイして全 11 項目 PASS を再確認し、再び**削除済み**。AWS 上にスタックは存在しない。
+**Verification record (2026-08-30)**: Deployed once to the dev environment, confirmed that all 11 items above PASS, also checked the front-end delivery (CSP, WASM boot), and then **removed** it. After converting the implementation to AmazonLambdaExtension on the same day, redeployed, reconfirmed that all 11 items PASS, and **removed** it again. No stack exists on AWS.
 
 ---
 
-## 🧹 削除（片付け）
+## 🧹 Removal (cleanup)
 
 ```powershell
 cd Template.IaC
@@ -237,7 +239,7 @@ npx --yes aws-cdk@latest destroy -c env=dev --force
 cd ..
 ```
 
-dev は全リソース DESTROY 指定のため原則残骸なし。ただし CDK 内蔵のバケット空化 Lambda の LogGroup（`/aws/lambda/{スタック名}-CustomS3AutoDeleteObject-*`）だけは CloudFormation 管理外のため残ることがある（空・無課金）。気になる場合は手動削除:
+In dev, all resources are set to DESTROY, so in principle nothing is left. However, the LogGroup of the bucket-emptying Lambda built into CDK (`/aws/lambda/{stack name}-CustomS3AutoDeleteObject-*`) may remain because it is outside CloudFormation management (empty, no charge). To remove it manually:
 
 ```powershell
 aws logs describe-log-groups --query "logGroups[?contains(logGroupName,'template-aws-line-miniapp')].logGroupName" --output text |
@@ -245,12 +247,12 @@ aws logs describe-log-groups --query "logGroups[?contains(logGroupName,'template
     ForEach-Object { aws logs delete-log-group --log-group-name $_ }
 ```
 
-**prod** はバケット・DynamoDB・Secret が RETAIN のため、スタック削除後に手動削除が必要（データ保全のための意図的な設計）。
+In **prod**, the bucket, DynamoDB, and Secret are RETAIN, so they must be removed manually after deleting the stack (an intentional design to protect the data).
 
-残骸確認:
+Check for leftovers:
 
 ```powershell
-aws cloudformation describe-stacks --stack-name template-aws-line-miniapp-dev   # 存在しないエラーが正
+aws cloudformation describe-stacks --stack-name template-aws-line-miniapp-dev   # A "does not exist" error is expected
 aws s3api list-buckets --query "Buckets[?contains(Name,'template-aws-line-miniapp')].Name"
 aws dynamodb list-tables --query "TableNames[?contains(@,'template-aws-line-miniapp')]"
 aws secretsmanager list-secrets --include-planned-deletion --query "SecretList[?contains(Name,'SecretJwtSigningKey')].Name"
@@ -258,105 +260,105 @@ aws secretsmanager list-secrets --include-planned-deletion --query "SecretList[?
 
 ---
 
-## 📁 プログラム構成
+## 📁 Program structure
 
 ```
 template-aws-line-miniapp/
-├── SPEC.md                                  ← 実装仕様（v2 仕様からの写像。本 README の上流）
-├── Template.Backend/                        ← Lambda (net10.0, 管理 dotnet10)
-│   ├── ServiceResolver.cs                   ← DI 登録（[ServiceResolver] から参照）
-│   ├── Functions/MiniAppFunction.cs         ← [Lambda] + [HttpApi]×4（AuthLogin/DataGet/DataPut/AccountDelete）
-│   ├── Filters/OriginVerifyFilter.cs        ← x-origin-verify 検証（ILambdaFilter・クラス共通）
-│   ├── Application/BackendOptions.cs        ← 環境変数の読み取り
+├── SPEC.md                                  ← Implementation spec (mapped from the v2 spec. Upstream of this README)
+├── Template.Backend/                        ← Lambda (net10.0, managed dotnet10)
+│   ├── ServiceResolver.cs                   ← DI registration (referenced from [ServiceResolver])
+│   ├── Functions/MiniAppFunction.cs         ← [Lambda] + [HttpApi]×4 (AuthLogin/DataGet/DataPut/AccountDelete)
+│   ├── Filters/OriginVerifyFilter.cs        ← x-origin-verify check (ILambdaFilter, shared by the class)
+│   ├── Application/BackendOptions.cs        ← Reads the environment variables
 │   ├── Services/                            ← LineTokenValidator / SigningKeyProvider / JwtIssuer / OwnTokenValidator / UserRepository
-│   └── Models/                              ← Contracts（AuthLogin/DataGet/DataPut。DataAnnotations 検証付き）
+│   └── Models/                              ← Contracts (AuthLogin/DataGet/DataPut. With DataAnnotations validation)
 ├── Template.Frontend/                       ← Blazor WebAssembly (net10.0)
-│   ├── Services/                            ← LiffService / TokenStore（メモリ保持）/ ApiClient（401時1回だけ再交換）
+│   ├── Services/                            ← LiffService / TokenStore (kept in memory) / ApiClient (re-exchanges only once on 401)
 │   ├── Components/Pages/                    ← Home / Data / Account / NotFound
-│   └── wwwroot/js/liff-interop.js           ← v2 §3.2 のラッパー（外部ファイル。CSP のため）
+│   └── wwwroot/js/liff-interop.js           ← Wrapper of v2 §3.2 (an external file, for CSP)
 ├── Template.IaC/                            ← AWS CDK (C#)
-│   ├── Infrastructure.cs                    ← スタック本体 + Outputs
-│   ├── HostingConstruct.cs                  ← S3 + CloudFront（/api/* + x-origin-verify + CSP）
-│   ├── ApiConstruct.cs                      ← HTTP API + Lambda ×4 + IAM（Scan/Query 明示 Deny）
+│   ├── Infrastructure.cs                    ← Stack body + Outputs
+│   ├── HostingConstruct.cs                  ← S3 + CloudFront (/api/* + x-origin-verify + CSP)
+│   ├── ApiConstruct.cs                      ← HTTP API + Lambda ×4 + IAM (Scan/Query explicitly denied)
 │   ├── DataConstruct.cs / SecretConstruct.cs
 │   └── EnvironmentConfig.cs / cdk.json / Program.cs
-├── scripts/                                 ← 下記
+├── scripts/                                 ← See below
 └── README.md / AGENTS.md / Analyzers.ruleset / Directory.Build.*
 ```
 
-### scripts 一覧
+### Scripts
 
-| スクリプト | 用途 |
+| Script | Purpose |
 |---|---|
-| `deploy-api.ps1` | Template.Backend を `publish-api/` へ publish（**cdk deploy の前**に必須。destroy 時も必要） |
-| `init-jwt-key.ps1` | ES256 鍵ペアを生成し Secrets Manager へ投入（冪等。`-Force` で再生成＝既存 JWT 全失効） |
-| `update-appsettings.ps1` | ローカル開発用 `appsettings.Development.json` を生成（LiffId は local 用） |
-| `deploy-app.ps1` | Template.Frontend を publish → S3 sync → immutable キャッシュ昇格 → Brotli 差し替え → invalidation |
-| `test-acceptance.ps1` | 上記の自動受け入れテスト（dev + testJwks 前提） |
-| `common.ps1` | 共通処理（cdk outputs 読み取り等）。直接実行しない |
+| `deploy-api.ps1` | Publishes Template.Backend to `publish-api/` (required **before cdk deploy**. Also needed for destroy) |
+| `init-jwt-key.ps1` | Generates an ES256 key pair and puts it into Secrets Manager (idempotent. `-Force` regenerates it = all existing JWTs become invalid) |
+| `update-appsettings.ps1` | Generates `appsettings.Development.json` for local development (LiffId is the local one) |
+| `deploy-app.ps1` | Publishes Template.Frontend → S3 sync → promotes to the immutable cache → replaces with Brotli → invalidation |
+| `test-acceptance.ps1` | The automated acceptance tests above (requires dev + testJwks) |
+| `common.ps1` | Shared processing (reading cdk outputs, etc.). Do not run it directly |
 
 ---
 
-## 💻 ローカル開発
+## 💻 Local development
 
 ```powershell
 ./scripts/update-appsettings.ps1 -Env dev
 dotnet run --project Template.Frontend       # https://localhost:5250
 ```
 
-- LIFF は https 必須のため、ローカル用 LIFF アプリのエンドポイントを `https://localhost:5250` に設定しておく（`dotnet dev-certs https --trust` が前提）。
-- API は dev スタックの CloudFront `/api/*` を呼ぶ（クロスオリジン。dev のみ HTTP API に localhost CORS を設定済み）。CloudFront 経由なので `x-origin-verify` は付与され、テスト 9 の直接アクセス遮断とは両立する。
+- Because LIFF requires https, set the endpoint of the local LIFF app to `https://localhost:5250` (requires `dotnet dev-certs https --trust`).
+- The API calls go to CloudFront `/api/*` of the dev stack (cross-origin. localhost CORS is set on the HTTP API in dev only). Because they go through CloudFront, `x-origin-verify` is added, which is compatible with the direct-access blocking of test 9.
 
 ---
 
-## 🛡️ セキュリティ
+## 🛡️ Security
 
-| 攻撃 | 結果 | 止まる場所 |
+| Attack | Result | Stopped by |
 |---|---|---|
-| `curl` で API を直接叩く | 401 | トークンなし |
-| `userId=他人` をパラメータに入れる | 無視 | サーバが `userId` を受け取らない |
-| JWT の `sub` を書き換え | 401 | 署名検証 |
-| `alg` を `none`/`HS256` に | 401 | `ValidAlgorithms=[ES256]` 固定 |
-| 別チャネルの LINE トークン | 401 | `aud` 検証 |
-| WASM を改造して再配布 | **何も起きない** | サーバが全判断 |
-| execute-api へ直接（CloudFront 迂回） | 403 | `x-origin-verify`（多層防御。突破されても JWT 検証が残る） |
+| Call the API directly with `curl` | 401 | No token |
+| Put `userId=someone else` in the parameters | Ignored | The server does not accept `userId` |
+| Rewrite `sub` of the JWT | 401 | Signature validation |
+| Change `alg` to `none`/`HS256` | 401 | `ValidAlgorithms=[ES256]` fixed |
+| LINE token of another channel | 401 | `aud` validation |
+| Modify and redistribute the WASM | **Nothing happens** | The server makes all decisions |
+| Directly to execute-api (bypassing CloudFront) | 403 | `x-origin-verify` (defense in depth. JWT validation remains even if it is bypassed) |
 
-- **CSP は CloudFront で付与**（`HostingConstruct.Csp`）。`connect-src` は `'self'` + `api.line.me`、`script-src` は `'self' 'wasm-unsafe-eval'` + `static.line-scdn.net`、`img-src` に `profile.line-scdn.net`。LIFF SDK の通信先は公式に網羅列挙されていないため、実機で CSP violation が出たらホストを追記する。
-- 自前 JWT は **localStorage に保存しない**（メモリのみ）。`lineUserId` はログ出力しない。生トークンは画面表示しない。
-- 署名鍵は Secrets Manager のみ。環境変数には ARN だけ（鍵素材は置かない）。
+- **CSP is added by CloudFront** (`HostingConstruct.Csp`). `connect-src` is `'self'` + `api.line.me`, `script-src` is `'self' 'wasm-unsafe-eval'` + `static.line-scdn.net`, and `img-src` includes `profile.line-scdn.net`. Because the hosts that the LIFF SDK connects to are not officially listed in full, add hosts when a CSP violation occurs on a real device.
+- The own JWT is **not stored in localStorage** (memory only). `lineUserId` is not logged. Raw tokens are not displayed on screen.
+- The signing key is only in Secrets Manager. Environment variables hold only the ARN (no key material).
 
-詳細は [SPEC.md](SPEC.md) §10 と `line-miniapp-spec-v2.md` §8。
+For details, see [SPEC.md](SPEC.md) §10 and `line-miniapp-spec-v2.md` §8.
 
 ---
 
-## 💰 ランニングコスト
+## 💰 Running costs
 
-| サービス | デモ運用（数ユーザー） | 10万 MAU |
+| Service | Demo use (a few users) | 100K MAU |
 |---|---|---|
-| DynamoDB | 〜$0.01 | 〜$3 |
-| Lambda | $0（無料枠） | 〜$2 |
-| CloudFront + S3 | $0〜0.01 | $5〜10 |
-| API Gateway (HTTP API) | 〜$0.01 | 〜$4 |
+| DynamoDB | ~$0.01 | ~$3 |
+| Lambda | $0 (free tier) | ~$2 |
+| CloudFront + S3 | $0-0.01 | $5-10 |
+| API Gateway (HTTP API) | ~$0.01 | ~$4 |
 | Secrets Manager | $0.40 | $0.40 |
-| **合計** | **約 $0.4/月** | **約 $15〜20/月** |
+| **Total** | **About $0.4/month** | **About $15-20/month** |
 
-Secrets Manager の $0.40/月以外はほぼ無料枠。本番で API Gateway のリクエスト課金が問題になる規模なら、v2 仕様どおり Lambda Function URL + OAC へ置き換える（ルーティングを単一 Lambda に寄せる設計変更を伴う）。
+Except for $0.40/month for Secrets Manager, almost everything is within the free tier. If the request charges of API Gateway become a problem in production, replace it with Lambda Function URL + OAC as in the v2 spec (this requires a design change that moves the routing into a single Lambda).
 
 ---
 
-## 📋 既知の制約
+## 📋 Known limitations
 
-| 項目 | 内容 |
+| Item | Description |
 |---|---|
-| Lambda コールドスタート | 管理ランタイムのため初回に JIT ウォームアップ（実測 700ms 程度）。詰めるなら Native AOT だが Windows→Linux ビルドに Docker が要るため不採用 |
-| CSP のホスト網羅 | LIFF SDK の通信先が非公開。実機初回テストで violation を確認し追記する（[SPEC.md](SPEC.md) §10.1） |
-| フロント初回ダウンロード | WASM + AOT で数 MB。ミニアプリは LINE 内でキャッシュが効きやすい前提で許容（[SPEC.md](SPEC.md) §1 #6） |
-| testJwks | dev 専用。prod では EnvironmentConfig が synth 時に例外を投げ、構造的に持ち込めない |
-| 現在のデプロイ状態 | 一度デプロイ・検証して**削除済み**。AWS 上にスタックは無い |
-| CI/CD | 未同梱 |
+| Lambda cold start | The managed runtime needs JIT warm-up on the first call (about 700ms measured). Native AOT would reduce it, but it is not adopted because building for Linux on Windows needs Docker |
+| Hosts covered by CSP | The hosts that the LIFF SDK connects to are not published. Check for violations in the first test on a real device and add them ([SPEC.md](SPEC.md) §10.1) |
+| First front-end download | Several MB with WASM + AOT. Accepted on the assumption that caching works well for mini apps inside LINE ([SPEC.md](SPEC.md) §1 #6) |
+| testJwks | dev only. In prod, EnvironmentConfig throws an exception at synth time, so it structurally cannot be brought in |
+| Current deployment state | Deployed and verified once, then **removed**. No stack exists on AWS |
+| CI/CD | Not included |
 
 ---
 
-## 📄 ライセンス
+## 📄 License
 
-[LICENSE](LICENSE) を参照。
+See [LICENSE](LICENSE).
