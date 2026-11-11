@@ -2,8 +2,7 @@
 
 [English](README.md) | 日本語
 
-LINE ミニアプリ（LIFF）向けの、**ユーザ別 JSON データ管理サービス**のテンプレート。
-Blazor WebAssembly（.NET 10）を CloudFront + S3 で配信し、LINE ログインで認証、ユーザーごとの少量 JSON を DynamoDB に保存する。
+[Template](https://usausa.github.io/template/) project for LINE Mini App on AWS.
 
 # ✅ 実装
 
