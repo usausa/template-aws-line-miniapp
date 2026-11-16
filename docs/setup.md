@@ -42,7 +42,7 @@ dotnet build
 
 ### 必要なもの
 
-- .NET SDK 10.0+
+- .NET SDK 11.0+
 - Node.js 20+（CDK CLI 実行用）
 - AWS CLI v2（認証情報設定済み）
 - PowerShell 7+
@@ -147,7 +147,7 @@ template-aws-line-miniapp/
 │   ├── Application/BackendOptions.cs        ← 環境変数の読み取り
 │   ├── Services/                            ← LineTokenValidator / SigningKeyProvider / JwtIssuer / OwnTokenValidator / UserRepository
 │   └── Models/                              ← Contracts（AuthLogin/DataGet/DataPut。DataAnnotations 検証付き）
-├── Template.Frontend/                       ← Blazor WebAssembly (net10.0)
+├── Template.Frontend/                       ← Blazor WebAssembly (net11.0)
 │   ├── Services/                            ← LiffService / TokenStore（メモリ保持）/ ApiClient（401時1回だけ再交換）
 │   ├── Components/Pages/                    ← Home / Data / Account / NotFound
 │   └── wwwroot/js/liff-interop.js           ← v2 §3.2 のラッパー（外部ファイル。CSP のため）

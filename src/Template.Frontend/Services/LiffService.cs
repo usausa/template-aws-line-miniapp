@@ -15,6 +15,7 @@ public sealed class LiffService
         this.js = js;
     }
 
+#pragma warning disable BL0016
     // Returns true when LIFF is ready and logged in; false while a login redirect is in progress
     // (the caller should render nothing further and let the navigation happen).
     public Task<bool> EnsureInitializedAsync(string liffId) =>
@@ -34,4 +35,5 @@ public sealed class LiffService
 
     public async Task CloseWindowAsync() =>
         await js.InvokeVoidAsync("liffInterop.closeWindow");
+#pragma warning restore BL0016
 }

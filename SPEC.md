@@ -46,7 +46,7 @@ v2 仕様書は設計思想(クライアントを一切信頼しない / 信頼�
 ```
 ┌──────────────────────────────────────────┐
 │ LINEアプリ(LIFFブラウザ)/ 外部ブラウザ      │
-│  Blazor WASM (.NET 10) + LIFF SDK (CDN)   │
+│  Blazor WASM (.NET 11) + LIFF SDK (CDN)   │
 │  liff-interop.js → LiffService (JS interop)│
 └─────────────┬─────────────────────────────┘
               │ HTTPS
@@ -126,7 +126,7 @@ template-aws-line-miniapp/
 │   ├── FunctionSerializerContext.cs / Assembly.cs / GlobalUsing.cs / GlobalSuppressions.cs
 │   └── Template.Backend.csproj              ← AmazonLambdaExtension 参照(ジェネレーター同梱)
 │
-├── Template.Frontend/                       ← Blazor WebAssembly (net10.0)
+├── Template.Frontend/                       ← Blazor WebAssembly (net11.0)
 │   ├── Program.cs
 │   ├── Application/ViewHelper.cs
 │   ├── Services/

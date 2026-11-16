@@ -58,8 +58,8 @@ public sealed class BackendOptions
             NumberStyles.Integer,
             CultureInfo.InvariantCulture,
             out var days)
-            ? days
-            : 7;
+                ? days
+                : 7;
 
         return new BackendOptions(
             Require("AUTH_TABLE"),

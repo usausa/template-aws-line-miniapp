@@ -11,8 +11,8 @@ public static class ViewHelper
             CultureInfo.InvariantCulture,
             DateTimeStyles.RoundtripKind,
             out var value)
-            ? value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)
-            : "-";
+                ? value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)
+                : "-";
 
     // Byte count of a UTF-8 string, for the client-side size hint on the data editor.
     public static int Utf8Bytes(string? text) =>
