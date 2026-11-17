@@ -61,7 +61,7 @@ template-aws-s3-wasm は API Gateway の JWT オーソライザーで認証す�
 ハンドラーは [AmazonLambdaExtension](https://github.com/usausa/amazon-lambda-extension)（ソースジェネレーター。NuGet `2.0.0-beta4`、ジェネレーター同梱）で記述している。
 
 - `[Lambda]` を付けた単一クラス `MiniAppFunction` に `[HttpApi(method, path)]` メソッド×4。各メソッドの Lambda エントリポイント `{Method}_Handler` が同クラスに生成される
-- パラメーターは `[FromBody]`（SG ベースの JSON + DataAnnotations 検証で不正 JSON は 400）と `[FromHeader("authorization")] string authorization = ""` で受ける（ヘッダーは**既定値必須**。`string?` などの null 許容注釈型はバインディング非対応 = ALE0019）
+- パラメーターは `[FromBody]`（SG ベースの JSON + DataAnnotations 検証で不正 JSON は 400）と `[FromHeader("authorization")] string authorization = ""` で受ける（ヘッダーが無いときは既定値が入る。既定値を書かない `string` には null が入るので、既定値の `""` を付ける）
 - x-origin-verify の検証は `ILambdaFilter`（`OriginVerifyFilter`）としてクラス共通に適用。JWT 検証は「`sub` の出所が検証済みトークンのみ」を可視に保つため、あえて各ハンドラー先頭に置いている
 - DI は `[ServiceResolver(typeof(ServiceResolver))]` + `ServiceResolver.ConfigureServices()`。`ILambdaSerializer` / `IBodySerializer` / `IRequestValidator` もここで登録する
 - `[HttpApi]` のルートテンプレートはドキュメント兼ルートパラメーターバインディング用で、実ルーティングは CDK 側にある（テンプレートの「インフラ記述を1箇所に」方針を維持）
