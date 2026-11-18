@@ -129,7 +129,7 @@ public sealed class HostingConstruct : Construct
         "default-src 'self'; " +
         "connect-src 'self' https://api.line.me; " +
         "script-src 'self' 'wasm-unsafe-eval' https://static.line-scdn.net; " +
-        "style-src 'self' 'unsafe-inline'; " +
+        "style-src 'self'; " +
         "img-src 'self' data: https://profile.line-scdn.net; " +
         "base-uri 'self'; " +
         "form-action 'self'; " +

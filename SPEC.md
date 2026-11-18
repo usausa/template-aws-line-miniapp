@@ -457,7 +457,7 @@ v2 §8(攻撃シナリオ別防御・レイヤー役割・禁止事項)を全面
 default-src 'self';
 connect-src 'self' https://api.line.me;
 script-src 'self' 'wasm-unsafe-eval' https://static.line-scdn.net;
-style-src 'self' 'unsafe-inline';
+style-src 'self';
 img-src 'self' data: https://profile.line-scdn.net;
 base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
 ```
